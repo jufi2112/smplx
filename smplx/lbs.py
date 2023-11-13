@@ -163,6 +163,7 @@ def lbs(
     parents: Tensor,
     lbs_weights: Tensor,
     pose2rot: bool = True,
+    use_pose_correctives: bool = True
 ) -> Tuple[Tensor, Tensor]:
     ''' Performs Linear Blend Skinning with the given shape and pose parameters
 
@@ -192,6 +193,8 @@ def lbs(
             should already contain rotation matrices and have a size of
             Bx(J + 1)x9
         dtype: torch.dtype, optional
+        use_pose_correctives: bool, optional
+            Whether to apply the pose correctives. Defaults to True
 
         Returns
         -------
@@ -229,8 +232,10 @@ def lbs(
 
         pose_offsets = torch.matmul(pose_feature.view(batch_size, -1),
                                     posedirs).view(batch_size, -1, 3)
-
-    v_posed = pose_offsets + v_shaped
+    if use_pose_correctives:
+        v_posed = pose_offsets + v_shaped
+    else:
+        v_posed = v_shaped
     # 4. Get the global joint location
     J_transformed, A = batch_rigid_transform(rot_mats, J, parents, dtype=dtype)
 

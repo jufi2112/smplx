@@ -146,10 +146,11 @@ class SMPL(nn.Module):
         self.batch_size = batch_size
         shapedirs = data_struct.shapedirs
         if (shapedirs.shape[-1] < self.SHAPE_SPACE_DIM):
-            print(f'WARNING: You are using a {self.name()} model, with only'
-                  f' {shapedirs.shape[-1]} shape coefficients.\n'
-                  f'num_betas={num_betas}, shapedirs.shape={shapedirs.shape}, '
-                  f'self.SHAPE_SPACE_DIM={self.SHAPE_SPACE_DIM}')
+            if 'Wall' in kwargs:
+                print(f'WARNING: You are using a {self.name()} model, with only'
+                    f' {shapedirs.shape[-1]} shape coefficients.\n'
+                    f'num_betas={num_betas}, shapedirs.shape={shapedirs.shape}, '
+                    f'self.SHAPE_SPACE_DIM={self.SHAPE_SPACE_DIM}')
             num_betas = min(num_betas, shapedirs.shape[-1])
         else:
             num_betas = min(num_betas, self.SHAPE_SPACE_DIM)
@@ -268,6 +269,11 @@ class SMPL(nn.Module):
         lbs_weights = to_tensor(to_np(data_struct.weights), dtype=dtype)
         self.register_buffer('lbs_weights', lbs_weights)
 
+        if "use_pose_correctives" in kwargs.keys():
+            self.use_pose_correctives = kwargs['use_pose_correctives']
+        else:
+            self.use_pose_correctives = True
+
     @property
     def num_betas(self):
         return self._num_betas
@@ -375,10 +381,16 @@ class SMPL(nn.Module):
             num_repeats = int(batch_size / betas.shape[0])
             betas = betas.expand(num_repeats, -1)
 
+        if 'use_pose_correctives' in kwargs.keys():
+            use_pose_correctives = kwargs['use_pose_correctives']
+        else:
+            use_pose_correctives = self.use_pose_correctives
+
         vertices, joints = lbs(betas, full_pose, self.v_template,
                                self.shapedirs, self.posedirs,
                                self.J_regressor, self.parents,
-                               self.lbs_weights, pose2rot=pose2rot)
+                               self.lbs_weights, pose2rot=pose2rot,
+                               use_pose_correctives=use_pose_correctives)
 
         joints = self.vertex_joint_selector(vertices, joints)
         # Map the joints to the current dataset
@@ -479,12 +491,18 @@ class SMPLLayer(SMPL):
             [global_orient.reshape(-1, 1, 3, 3),
              body_pose.reshape(-1, self.NUM_BODY_JOINTS, 3, 3)],
             dim=1)
+        
+        if 'use_pose_correctives' in kwargs.keys():
+            use_pose_correctives = kwargs['use_pose_correctives']
+        else:
+            use_pose_correctives = self.use_pose_correctives
 
         vertices, joints = lbs(betas, full_pose, self.v_template,
                                self.shapedirs, self.posedirs,
                                self.J_regressor, self.parents,
                                self.lbs_weights,
-                               pose2rot=False)
+                               pose2rot=False,
+                               use_pose_correctives=use_pose_correctives)
 
         joints = self.vertex_joint_selector(vertices, joints)
         # Map the joints to the current dataset
@@ -736,10 +754,16 @@ class SMPLH(SMPL):
                                right_hand_pose], dim=1)
         full_pose += self.pose_mean
 
+        if 'use_pose_correctives' in kwargs.keys():
+            use_pose_correctives = kwargs['use_pose_correctives']
+        else:
+            use_pose_correctives = self.use_pose_correctives
+
         vertices, joints = lbs(betas, full_pose, self.v_template,
                                self.shapedirs, self.posedirs,
                                self.J_regressor, self.parents,
-                               self.lbs_weights, pose2rot=pose2rot)
+                               self.lbs_weights, pose2rot=pose2rot,
+                               use_pose_correctives=use_pose_correctives)
 
         # Add any extra joints that might be needed
         joints = self.vertex_joint_selector(vertices, joints)
@@ -865,10 +889,16 @@ class SMPLHLayer(SMPLH):
              right_hand_pose.reshape(-1, self.NUM_HAND_JOINTS, 3, 3)],
             dim=1)
 
+        if 'use_pose_correctives' in kwargs.keys():
+            use_pose_correctives = kwargs['use_pose_correctives']
+        else:
+            use_pose_correctives = self.use_pose_correctives
+
         vertices, joints = lbs(betas, full_pose, self.v_template,
                                self.shapedirs, self.posedirs,
                                self.J_regressor, self.parents,
-                               self.lbs_weights, pose2rot=False)
+                               self.lbs_weights, pose2rot=False,
+                               use_pose_correctives=use_pose_correctives)
 
         # Add any extra joints that might be needed
         joints = self.vertex_joint_selector(vertices, joints)
@@ -1059,8 +1089,9 @@ class SMPLX(SMPLH):
             shapedirs = shapedirs[:, :, None]
         if (shapedirs.shape[-1] < self.SHAPE_SPACE_DIM +
                 self.EXPRESSION_SPACE_DIM):
-            print(f'WARNING: You are using a {self.name()} model, with only'
-                  ' 10 shape and 10 expression coefficients.')
+            if 'Wall' in kwargs:
+                print(f'WARNING: You are using a {self.name()} model, with only'
+                    ' 10 shape and 10 expression coefficients.')
             expr_start_idx = 10
             expr_end_idx = 20
             num_expression_coeffs = min(num_expression_coeffs, 10)
@@ -1229,6 +1260,11 @@ class SMPLX(SMPLH):
         # hands when flat_hand_mean == False
         full_pose += self.pose_mean
 
+        if 'use_pose_correctives' in kwargs.keys():
+            use_pose_correctives = kwargs['use_pose_correctives']
+        else:
+            use_pose_correctives = self.use_pose_correctives
+
         batch_size = max(betas.shape[0], global_orient.shape[0],
                          body_pose.shape[0])
         # Concatenate the shape and expression coefficients
@@ -1243,6 +1279,7 @@ class SMPLX(SMPLH):
                                shapedirs, self.posedirs,
                                self.J_regressor, self.parents,
                                self.lbs_weights, pose2rot=pose2rot,
+                               use_pose_correctives=use_pose_correctives
                                )
 
         lmk_faces_idx = self.lmk_faces_idx.unsqueeze(
@@ -1442,11 +1479,17 @@ class SMPLXLayer(SMPLX):
 
         shapedirs = torch.cat([self.shapedirs, self.expr_dirs], dim=-1)
 
+        if 'use_pose_correctives' in kwargs.keys():
+            use_pose_correctives = kwargs['use_pose_correctives']
+        else:
+            use_pose_correctives = self.use_pose_correctives
+
         vertices, joints = lbs(shape_components, full_pose, self.v_template,
                                shapedirs, self.posedirs,
                                self.J_regressor, self.parents,
                                self.lbs_weights,
                                pose2rot=False,
+                               use_pose_correctives=use_pose_correctives
                                )
 
         lmk_faces_idx = self.lmk_faces_idx.unsqueeze(
@@ -1922,8 +1965,9 @@ class FLAME(SMPL):
             shapedirs = shapedirs[:, :, None]
         if (shapedirs.shape[-1] < self.SHAPE_SPACE_DIM +
                 self.EXPRESSION_SPACE_DIM):
-            print(f'WARNING: You are using a {self.name()} model, with only'
-                  ' 10 shape and 10 expression coefficients.')
+            if 'Wall' in kwargs:
+                print(f'WARNING: You are using a {self.name()} model, with only'
+                    ' 10 shape and 10 expression coefficients.')
             expr_start_idx = 10
             expr_end_idx = 20
             num_expression_coeffs = min(num_expression_coeffs, 10)
