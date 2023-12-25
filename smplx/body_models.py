@@ -406,6 +406,7 @@ class SMPL(nn.Module):
                             body_pose=body_pose,
                             joints=joints,
                             betas=betas,
+                            transl=transl,
                             full_pose=full_pose if return_full_pose else None)
 
         return output
@@ -518,6 +519,7 @@ class SMPLLayer(SMPL):
                             body_pose=body_pose,
                             joints=joints,
                             betas=betas,
+                            transl=transl,
                             full_pose=full_pose if return_full_pose else None)
 
         return output
@@ -777,6 +779,7 @@ class SMPLH(SMPL):
         output = SMPLHOutput(vertices=vertices if return_verts else None,
                              joints=joints,
                              betas=betas,
+                             transl=transl,
                              global_orient=global_orient,
                              body_pose=body_pose,
                              left_hand_pose=left_hand_pose,
@@ -912,6 +915,7 @@ class SMPLHLayer(SMPLH):
         output = SMPLHOutput(vertices=vertices if return_verts else None,
                              joints=joints,
                              betas=betas,
+                             transl=transl,
                              global_orient=global_orient,
                              body_pose=body_pose,
                              left_hand_pose=left_hand_pose,
@@ -1751,6 +1755,7 @@ class MANO(SMPL):
                             betas=betas,
                             global_orient=global_orient,
                             hand_pose=hand_pose,
+                            transl=transl,
                             full_pose=full_pose if return_full_pose else None)
 
         return output
@@ -1815,6 +1820,7 @@ class MANOLayer(MANO):
             vertices=vertices if return_verts else None,
             joints=joints if return_verts else None,
             betas=betas,
+            transl=transl,
             global_orient=global_orient,
             hand_pose=hand_pose,
             full_pose=full_pose if return_full_pose else None)
@@ -2185,6 +2191,7 @@ class FLAME(SMPL):
                              global_orient=global_orient,
                              neck_pose=neck_pose,
                              jaw_pose=jaw_pose,
+                             transl=transl,
                              full_pose=full_pose if return_full_pose else None)
         return output
 
@@ -2334,6 +2341,7 @@ class FLAMELayer(FLAME):
                              global_orient=global_orient,
                              neck_pose=neck_pose,
                              jaw_pose=jaw_pose,
+                             transl=transl,
                              full_pose=full_pose if return_full_pose else None)
         return output
 
